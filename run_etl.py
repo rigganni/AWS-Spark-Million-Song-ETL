@@ -17,7 +17,6 @@ os.environ['AWS_ACCESS_KEY_ID'] = aws_access_key
 os.environ['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
 
 # Adapted from https://medium.com/@kulasangar/create-an-emr-cluster-and-submit-a-job-using-boto3-c34134ef68a0
-
 connection = boto3.client(
     "emr",
     region_name=aws_region,
@@ -26,10 +25,12 @@ connection = boto3.client(
 )
 
 s3_local_file = 'etl.py'
+s3_install_requirements_file = 'install-requirements.sh'
 s3_bucket = 'million-song'
 s3_key = 'code/{local_file}'.format(local_file=s3_local_file)
+s3_install_key = 'code/{local_file}'.format(local_file=s3_install_requirements_file)
 s3_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket, key=s3_key)
-
+s3_install_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket, key=s3_install_key)
 
 s3 = boto3.resource('s3')
 
@@ -61,7 +62,7 @@ s3 = boto3.client(
 )
 
 s3.upload_file(s3_local_file, s3_bucket, s3_key)
-#s3.meta.client.upload_file(s3_local_file, s3_bucket, s3_key)
+s3.upload_file(s3_install_requirements_file, s3_bucket, s3_install_key)
 
 # Create AWS EMR cluster
 # Adapted from https://stackoverflow.com/questions/36706512/how-do-you-automate-pyspark-jobs-on-emr-using-boto3-or-otherwise
@@ -97,6 +98,13 @@ response = connection.run_job_flow(
                 'Path': 's3://support.elasticmapreduce/spark/maximize-spark-default-config',
             }
         },
+        {
+            'Name': 'Install Required pip Modules',
+            'ScriptBootstrapAction': {
+                'Path': s3_install_uri,
+            }
+        },
+
     ],
     Steps=[
     {
