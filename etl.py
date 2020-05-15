@@ -262,7 +262,7 @@ def main():
         "mapreduce.fileoutputcommitter.algorithm.version", "2")
 
     input_data = "s3a://udacity-dend/"
-    output_data = "s3a://million_song/output/"
+    output_data = "s3a://million-song/output/"
 
     process_song_data(spark, input_data, output_data)
     process_log_data(spark, input_data, output_data)
