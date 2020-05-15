@@ -12,6 +12,7 @@ aws_region = config.get("AWS", "AWS_REGION")
 aws_s3_log_uri = config.get("AWS", "AWS_S3_LOG_URI")
 aws_ec2_key_name = config.get("AWS", "AWS_EC2_KEY_NAME")
 aws_ec2_subnet_id = config.get("AWS", "AWS_EC2_SUBNET_ID")
+aws_master_private_ip = config.get("AWS", "AWS_MASTER_PRIVATE_IP")
 
 os.environ['AWS_ACCESS_KEY_ID'] = aws_access_key
 os.environ['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
@@ -24,13 +25,14 @@ connection = boto3.client(
     aws_secret_access_key=aws_secret_key
 )
 
-s3_local_file = 'etl.py'
 s3_install_requirements_file = 'install-requirements.sh'
+s3_etl_file = 'etl.py'
+s3_private_ip_file = 's3://million-song/emr_bootstrap_scripts/assign_private_ip.py'
 s3_bucket = 'million-song'
-s3_key = 'code/{local_file}'.format(local_file=s3_local_file)
 s3_install_key = 'code/{local_file}'.format(local_file=s3_install_requirements_file)
-s3_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket, key=s3_key)
+s3_etl_key = 'code/{local_file}'.format(local_file=s3_etl_file)
 s3_install_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket, key=s3_install_key)
+s3_etl_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket, key=s3_etl_key)
 
 s3 = boto3.resource('s3')
 
@@ -53,7 +55,6 @@ if not s3_bucket_exists:
             )
 
 # upload etl.py to s3_bucket
-#s3 = boto3.resource('s3')
 s3 = boto3.client(
     "s3",
     region_name=aws_region,
@@ -61,8 +62,8 @@ s3 = boto3.client(
     aws_secret_access_key=aws_secret_key
 )
 
-s3.upload_file(s3_local_file, s3_bucket, s3_key)
 s3.upload_file(s3_install_requirements_file, s3_bucket, s3_install_key)
+s3.upload_file(s3_etl_file, s3_bucket, s3_etl_key)
 
 # Create AWS EMR cluster
 # Adapted from https://stackoverflow.com/questions/36706512/how-do-you-automate-pyspark-jobs-on-emr-using-boto3-or-otherwise
@@ -81,54 +82,67 @@ response = connection.run_job_flow(
         {
             'Name': 'Spark'
         },
+        {
+            'Name': 'Ganglia'
+        },
+        {
+            'Name': 'Hive'
+        },
+        {
+            'Name': 'Hue'
+        },
+        {
+            'Name': 'Mahout'
+        },
+        {
+            'Name': 'Pig'
+        },
+        {
+            'Name': 'Tez'
+        },
+        {
+            'Name': 'Hadoop'
+        },
     ],
     EbsRootVolumeSize=10,
     Instances={
         'MasterInstanceType': 'm5.xlarge',
         'SlaveInstanceType': 'm5.xlarge',
-        'InstanceCount': 3,
+        'InstanceCount': 10,
         'TerminationProtected': False,
         'Ec2KeyName': aws_ec2_key_name,
         'Ec2SubnetId': aws_ec2_subnet_id
     },
     BootstrapActions=[
         {
-            'Name': 'Maximize Spark Default Config',
-            'ScriptBootstrapAction': {
-                'Path': 's3://support.elasticmapreduce/spark/maximize-spark-default-config',
-            }
-        },
-        {
             'Name': 'Install Required pip Modules',
             'ScriptBootstrapAction': {
                 'Path': s3_install_uri,
             }
         },
-
+        {
+            'Name': 'Set Private IP Address',
+            'ScriptBootstrapAction': {
+                'Path': s3_private_ip_file,
+                'Args': [
+                    aws_master_private_ip
+                    ]
+            }
+        },
     ],
     Steps=[
     {
-        'Name': 'Setup Debugging',
+        'Name': 'Million-Song ETL',
         'ActionOnFailure': 'TERMINATE_CLUSTER',
         'HadoopJarStep': {
             'Jar': 'command-runner.jar',
-            'Args': ['state-pusher-script']
-        }
-    },
-    {
-        'Name': 'setup - copy files',
-        'ActionOnFailure': 'CANCEL_AND_WAIT',
-        'HadoopJarStep': {
-            'Jar': 'command-runner.jar',
-            'Args': ['aws', 's3', 'cp', s3_uri, '/home/hadoop/']
-        }
-    },
-    {
-        'Name': 'Run Spark',
-        'ActionOnFailure': 'CANCEL_AND_WAIT',
-        'HadoopJarStep': {
-            'Jar': 'command-runner.jar',
-            'Args': ['spark-submit', '/home/hadoop/etl.py']
+            'Args': [
+                'spark-submit',
+                '--deploy-mode', 'cluster',
+                '--master', 'yarn',
+                'spark.yarn.submit.waitAppCompletion=true',
+                s3_etl_uri
+                ]
         }
     }
     ],
