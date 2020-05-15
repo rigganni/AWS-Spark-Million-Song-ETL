@@ -16,11 +16,10 @@ aws_secret_key = config.get("AWS", "AWS_SECRET_ACCESS_KEY")
 # Used us-west-2 since million song files located in s3 bucket there
 aws_region = config.get("AWS", "AWS_REGION")
 
-# Private address; obtain from AWS EMR 
+# Private address; obtain from AWS EMR
 hdfs_address_port = config.get("AWS", "AWS_HDFS_ADDRESS_PORT")
 os.environ['AWS_ACCESS_KEY_ID'] = aws_access_key
 os.environ['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
-
 
 
 def create_spark_session():
@@ -79,9 +78,13 @@ def process_song_data(spark, input_data, output_data):
     """)
 
     # write songs table to parquet files partitioned by year and artist
-    songs_table.write.partitionBy("year", "artist_id").parquet("hdfs://" + hdfs_address_port + "/output/songs", mode="overwrite")
+    songs_table.write.partitionBy("year", "artist_id").parquet(
+        "hdfs://" + hdfs_address_port + "/output/songs", mode="overwrite")
     # cp from hdfs to s3 since much quicker than writing directly to s3
-    subprocess.check_output(['s3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/songs', '--dest', output_data + 'songs'])
+    subprocess.check_output([
+        's3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/songs',
+        '--dest', output_data + 'songs'
+    ])
 
     # extract columns to create artists table
     artists_table = spark.sql("""
@@ -95,9 +98,15 @@ def process_song_data(spark, input_data, output_data):
     """)
 
     # write artists table to parquet files
-    artists_table.write.parquet("hdfs://" + hdfs_address_port + "/output/artists", mode="overwrite")
+    artists_table.write.parquet("hdfs://" + hdfs_address_port +
+                                "/output/artists",
+                                mode="overwrite")
     # cp from hdfs to s3 since much quicker than writing directly to s3
-    subprocess.check_output(['s3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/artists', '--dest', output_data + 'artists'])
+    subprocess.check_output([
+        's3-dist-cp', '--src',
+        'hdfs://' + hdfs_address_port + '/output/artists', '--dest',
+        output_data + 'artists'
+    ])
 
 
 def process_log_data(spark, input_data, output_data):
@@ -139,9 +148,13 @@ def process_log_data(spark, input_data, output_data):
     """)
 
     # write users table to parquet files
-    users_table.write.parquet("hdfs://" + hdfs_address_port + "/output/users", mode="overwrite")
+    users_table.write.parquet("hdfs://" + hdfs_address_port + "/output/users",
+                              mode="overwrite")
     # cp from hdfs to s3 since much quicker than writing directly to s3
-    subprocess.check_output(['s3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/users', '--dest', output_data +  'users'])
+    subprocess.check_output([
+        's3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/users',
+        '--dest', output_data + 'users'
+    ])
 
     # extract columns to create time table
     # Adapted from: https://knowledge.udacity.com/questions/141592
@@ -157,20 +170,29 @@ def process_log_data(spark, input_data, output_data):
            dayofweek(to_timestamp(ts/1000.0)) AS weekday
     FROM logs
     """)
-    
-    # write time table to parquet files partitioned by year and month
-    time_table.write.partitionBy("year", "month").parquet("hdfs://" + hdfs_address_port + "/output/time", mode="overwrite")
-    # cp from hdfs to s3 since much quicker than writing directly to s3
-    subprocess.check_output(['s3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/time', '--dest', output_data + 'time'])
 
-    songs_table_df = spark.read.parquet("hdfs://" + hdfs_address_port + "/output/songs")
+    # write time table to parquet files partitioned by year and month
+    time_table.write.partitionBy("year", "month").parquet(
+        "hdfs://" + hdfs_address_port + "/output/time", mode="overwrite")
     # cp from hdfs to s3 since much quicker than writing directly to s3
-    subprocess.check_output(['s3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/songs', '--dest', output_data + 'songs'])
+    subprocess.check_output([
+        's3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/time',
+        '--dest', output_data + 'time'
+    ])
+
+    songs_table_df = spark.read.parquet("hdfs://" + hdfs_address_port +
+                                        "/output/songs")
+    # cp from hdfs to s3 since much quicker than writing directly to s3
+    subprocess.check_output([
+        's3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/songs',
+        '--dest', output_data + 'songs'
+    ])
     # Create SQL view to utilize Spark SQL
     songs_table_df.createOrReplaceTempView("songs")
 
     # load artists table created previously from hdfs to use in SQL queries below
-    artists_table_df = spark.read.parquet("hdfs://" + hdfs_address_port + "/output/artists")
+    artists_table_df = spark.read.parquet("hdfs://" + hdfs_address_port +
+                                          "/output/artists")
     # Create SQL view to utilize Spark SQL
     artists_table_df.createOrReplaceTempView("artists")
 
@@ -183,7 +205,8 @@ def process_log_data(spark, input_data, output_data):
     """)
 
     # Create SQL view to utilize Spark SQL
-    songs_with_artists_info_df.createOrReplaceTempView("songs_with_artists_info")
+    songs_with_artists_info_df.createOrReplaceTempView(
+        "songs_with_artists_info")
 
     # extract columns from joined song and log datasets to create songplays table
     songplays_table = spark.sql("""
@@ -206,8 +229,13 @@ def process_log_data(spark, input_data, output_data):
     """)
 
     # write songplays table to parquet files partitioned by year and month
-    songplays_table.write.partitionBy("year", "month").parquet("hdfs://" + hdfs_address_port + "/output/songplays", mode="overwrite")
-    subprocess.check_output(['s3-dist-cp', '--src', 'hdfs://' + hdfs_address_port + '/output/songplays', '--dest', output_data + 'songplays'])
+    songplays_table.write.partitionBy("year", "month").parquet(
+        "hdfs://" + hdfs_address_port + "/output/songplays", mode="overwrite")
+    subprocess.check_output([
+        's3-dist-cp', '--src',
+        'hdfs://' + hdfs_address_port + '/output/songplays', '--dest',
+        output_data + 'songplays'
+    ])
 
 
 def main():
@@ -230,7 +258,8 @@ def main():
 
     # Speed up S3 writing. Reduced total time by 50%.
     # Source: https://knowledge.udacity.com/questions/73278
-    sc._jsc.hadoopConfiguration().set("mapreduce.fileoutputcommitter.algorithm.version", "2")
+    sc._jsc.hadoopConfiguration().set(
+        "mapreduce.fileoutputcommitter.algorithm.version", "2")
 
     input_data = "s3a://udacity-dend/"
     output_data = "s3a://million_song/output/"
