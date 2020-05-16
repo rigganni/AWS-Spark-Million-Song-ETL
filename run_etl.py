@@ -18,20 +18,20 @@ os.environ['AWS_ACCESS_KEY_ID'] = aws_access_key
 os.environ['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
 
 # Adapted from https://medium.com/@kulasangar/create-an-emr-cluster-and-submit-a-job-using-boto3-c34134ef68a0
-connection = boto3.client(
-    "emr",
-    region_name=aws_region,
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_key
-)
+connection = boto3.client("emr",
+                          region_name=aws_region,
+                          aws_access_key_id=aws_access_key,
+                          aws_secret_access_key=aws_secret_key)
 
 s3_install_requirements_file = 'install-requirements.sh'
 s3_etl_file = 'etl.py'
 s3_private_ip_file = 's3://million-song/emr_bootstrap_scripts/assign_private_ip.py'
 s3_bucket = 'million-song'
-s3_install_key = 'code/{local_file}'.format(local_file=s3_install_requirements_file)
+s3_install_key = 'code/{local_file}'.format(
+    local_file=s3_install_requirements_file)
 s3_etl_key = 'code/{local_file}'.format(local_file=s3_etl_file)
-s3_install_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket, key=s3_install_key)
+s3_install_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket,
+                                              key=s3_install_key)
 s3_etl_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket, key=s3_etl_key)
 
 s3 = boto3.resource('s3')
@@ -42,37 +42,29 @@ for bucket in s3.buckets.all():
     if bucket.name == s3_bucket:
         s3_bucket_exists = True
 
-
 s3 = boto3.client('s3', region_name=aws_region)
 
 # Create bucket if it does not exist
 if not s3_bucket_exists:
     s3.create_bucket(
-            Bucket=s3_bucket,
-            CreateBucketConfiguration={
-                'LocationConstraint': aws_region
-                }
-            )
+        Bucket=s3_bucket,
+        CreateBucketConfiguration={'LocationConstraint': aws_region})
 
 # upload etl.py to s3_bucket
-s3 = boto3.client(
-    "s3",
-    region_name=aws_region,
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_key
-)
+s3 = boto3.client("s3",
+                  region_name=aws_region,
+                  aws_access_key_id=aws_access_key,
+                  aws_secret_access_key=aws_secret_key)
 
 s3.upload_file(s3_install_requirements_file, s3_bucket, s3_install_key)
 s3.upload_file(s3_etl_file, s3_bucket, s3_etl_key)
 
 # Create AWS EMR cluster
 # Adapted from https://stackoverflow.com/questions/36706512/how-do-you-automate-pyspark-jobs-on-emr-using-boto3-or-otherwise
-connection = boto3.client(
-    "emr",
-    region_name=aws_region,
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_key
-)
+connection = boto3.client("emr",
+                          region_name=aws_region,
+                          aws_access_key_id=aws_access_key,
+                          aws_secret_access_key=aws_secret_key)
 
 response = connection.run_job_flow(
     Name='million_song_emr_job_boto3',
@@ -124,31 +116,24 @@ response = connection.run_job_flow(
             'Name': 'Set Private IP Address',
             'ScriptBootstrapAction': {
                 'Path': s3_private_ip_file,
-                'Args': [
-                    aws_master_private_ip
-                    ]
+                'Args': [aws_master_private_ip]
             }
         },
     ],
-    Steps=[
-    {
+    Steps=[{
         'Name': 'Million-Song ETL',
         'ActionOnFailure': 'TERMINATE_CLUSTER',
         'HadoopJarStep': {
-            'Jar': 'command-runner.jar',
+            'Jar':
+            'command-runner.jar',
             'Args': [
-                'spark-submit',
-                '--deploy-mode', 'cluster',
-                '--master', 'yarn',
-                'spark.yarn.submit.waitAppCompletion=true',
-                s3_etl_uri
-                ]
+                'spark-submit', '--deploy-mode', 'cluster', '--master', 'yarn',
+                'spark.yarn.submit.waitAppCompletion=true', s3_etl_uri
+            ]
         }
-    }
-    ],
+    }],
     VisibleToAllUsers=True,
     JobFlowRole='EMR_EC2_DefaultRole',
-    ServiceRole='EMR_DefaultRole'
-)
+    ServiceRole='EMR_DefaultRole')
 
-print ('cluster created with the step...', response['JobFlowId'])
+print('cluster created with the step...', response['JobFlowId'])
