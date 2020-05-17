@@ -43,8 +43,8 @@ title {label: "Sparkify Dimensional Data Model (S3 Parquet)", size: "20"}
   latitude {label: "DOUBLE, NULL"}
   longitude {label: "DOUBLE, NULL"}
 
-songplay *--1 time
-songplay *--1 users
-songplay *--1 artists
-songplay *--1 songs
+songplays *--1 time
+songplays *--1 users
+songplays *--1 artists
+songplays *--1 songs
 artists 1--* songs
