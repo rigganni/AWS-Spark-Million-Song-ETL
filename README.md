@@ -60,4 +60,10 @@ Optional: Create EMR cluster with `run_etl.py` and run `etl.py`. After `etl.py` 
 
 Or run `etl.py` on existing AWS EMR cluster:
 
-`python etl.py`
+`ssh your-AWS-EMR-cluster "time python3 " < ./etl.py >/tmp/results.txt 2>&1`
+
+Spark output is quite verbose. It is recommended to pipe both stderr and stdout to a file on your local computer. If output is streamed to your terminal session it can consume a large amount of system memory.
+
+If running `etl.py` on already set up EMR cluster ensure that if you have installed the necessary requirements first:
+
+`ssh your-AWS-EMR-cluster  < ./install-requirements.sh`
