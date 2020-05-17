@@ -1,0 +1,50 @@
+title {label: "Sparkify Dimensional Data Model (S3 Parquet)", size: "20"}
+
+[songplay]  {bgcolor: "#ececfc"}
+  *songplay_id {label: "INT32, SEQUENCE(1,1), PRIMARY KEY"}
+  +start_time {label: "INT96, NULL"}
+  +user_id {label: "STRING, NULL"}
+  level {label: "STRING, NULL"}
+  +song_id {label: "STRING, NULL"}
+  +artist_id {label: "STRING, NULL"}
+  session_id {label: "INT64, NULL"}
+  location {label: "STRING, NULL"}
+  user_agent {label: "STRING, NULL"}
+  year {label: "INT32, NULL, PARTITION KEY #1"}
+  month {label: "INT32, NULL, PARTITION KEY #2"}
+
+[time] {bgcolor: "#d0e0d0"}
+  *start_time {label: "INT96, PRIMARY KEY"}
+  hour {label: "INT32, NULL"}
+  day {label: "INT32, NULL"}
+  week {label: "INT32, NULL"}
+  month {label: "INT32, NULL, PARTITION KEY #2"}
+  year {label: "INT32, NULL, PARTITION KEY #1"}
+  weekday {label: "INT32, NULL"}
+
+[users] {bgcolor: "#d0e0d0"}
+  *user_id {label: "STRING, KEY"}
+  first_name {label: "STRING, NULL"}
+  last_name {label: "STRING, NULL"}
+  gender {label: "STRING, NULL"}
+  level {label: "STRING, NULL"}
+
+[songs] {bgcolor: "#d0e0d0"}
+  *song_id {label: "STRING, PRIMARY KEY"}
+  title {label: "STRING, NULL"}
+  +artist_id {label: "STRING, NULL, PARTITION KEY #2"}
+  year {label: "INT32, NULL, PARTITION KEY #1"}
+  duration {label: "DOUBLE, NULL"}
+
+[artists] {bgcolor: "#d0e0d0"}
+  *artist_id {label: "STRING, PRIMARY KEY"}
+  name {label: "STRING, NULL"}
+  location {label: "STRING, NULL"}
+  latitude {label: "DOUBLE, NULL"}
+  longitude {label: "DOUBLE, NULL"}
+
+songplay *--1 time
+songplay *--1 users
+songplay *--1 artists
+songplay *--1 songs
+artists 1--* songs
