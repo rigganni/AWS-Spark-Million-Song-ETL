@@ -1,6 +1,6 @@
 title {label: "Sparkify Dimensional Data Model (S3 Parquet)", size: "20"}
 
-[songplay]  {bgcolor: "#ececfc"}
+[songplays]  {bgcolor: "#ececfc"}
   *songplay_id {label: "INT32, SEQUENCE(1,1), PRIMARY KEY"}
   +start_time {label: "INT96, NULL"}
   +user_id {label: "STRING, NULL"}
