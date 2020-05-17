@@ -25,14 +25,16 @@ connection = boto3.client("emr",
 
 s3_install_requirements_file = 'install-requirements.sh'
 s3_etl_file = 'etl.py'
-s3_private_ip_file = 's3://million-song/emr_bootstrap_scripts/assign_private_ip.py'
+s3_private_ip_file = 'assign_private_ip.py'
 s3_bucket = 'million-song'
 s3_install_key = 'code/{local_file}'.format(
     local_file=s3_install_requirements_file)
 s3_etl_key = 'code/{local_file}'.format(local_file=s3_etl_file)
+s3_private_ip_key = 'code/{local_file}'.format(local_file=s3_private_ip_file)
 s3_install_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket,
                                               key=s3_install_key)
 s3_etl_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket, key=s3_etl_key)
+s3_private_ip_uri = 's3://{bucket}/{key}'.format(bucket=s3_bucket, key=s3_private_ip_key)
 
 s3 = boto3.resource('s3')
 
@@ -58,6 +60,7 @@ s3 = boto3.client("s3",
 
 s3.upload_file(s3_install_requirements_file, s3_bucket, s3_install_key)
 s3.upload_file(s3_etl_file, s3_bucket, s3_etl_key)
+s3.upload_file(s3_private_ip_file, s3_bucket, s3_private_ip_key)
 
 # Create AWS EMR cluster
 # Adapted from https://stackoverflow.com/questions/36706512/how-do-you-automate-pyspark-jobs-on-emr-using-boto3-or-otherwise
@@ -115,7 +118,7 @@ response = connection.run_job_flow(
         {
             'Name': 'Set Private IP Address',
             'ScriptBootstrapAction': {
-                'Path': s3_private_ip_file,
+                'Path': s3_private_ip_uri,
                 'Args': [aws_master_private_ip]
             }
         },
